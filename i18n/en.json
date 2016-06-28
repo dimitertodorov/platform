@@ -1429,7 +1429,7 @@
   },
   {
     "id": "api.templates.post_body.button",
-    "translation": "Go To Channel"
+    "translation": "Go To Post"
   },
   {
     "id": "api.templates.post_body.info",
@@ -2120,6 +2120,10 @@
     "translation": "Invalid LDAP Filter"
   },
   {
+    "id": "ent.ldap.mattermost_user_update",
+    "translation": "Mattermost user was updated by LDAP server."
+  },
+  {
     "id": "ent.mfa.activate.authenticate.app_error",
     "translation": "Error attempting to authenticate MFA token"
   },
@@ -2514,6 +2518,10 @@
   {
     "id": "model.config.is_valid.ldap_sync_interval.app_error",
     "translation": "Invalid sync interval time. Must be at least one minute."
+  },
+  {
+    "id": "model.config.is_valid.ldap_required.app_error",
+    "translation": "Required LDAP field missing."
   },
   {
     "id": "model.config.is_valid.listen_address.app_error",
