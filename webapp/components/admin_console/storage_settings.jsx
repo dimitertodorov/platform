@@ -21,20 +21,10 @@ export default class StorageSettings extends AdminSettings {
         this.getConfigFromState = this.getConfigFromState.bind(this);
 
         this.renderSettings = this.renderSettings.bind(this);
-
-        //maxFileSize: props.config.FileSettings.MaxFileSize,
-        this.state = Object.assign(this.state, {
-            driverName: props.config.FileSettings.DriverName,
-            directory: props.config.FileSettings.Directory,
-            amazonS3AccessKeyId: props.config.FileSettings.AmazonS3AccessKeyId,
-            amazonS3SecretAccessKey: props.config.FileSettings.AmazonS3SecretAccessKey,
-            amazonS3Bucket: props.config.FileSettings.AmazonS3Bucket,
-            amazonS3Region: props.config.FileSettings.AmazonS3Region
-        });
     }
 
     getConfigFromState(config) {
-        //config.FileSettings.MaxFileSize = this.parseInt(this.state.maxFileSize);
+        config.FileSettings.MaxFileSize = this.parseInt(this.state.maxFileSize) * 1024 * 1024;
         config.FileSettings.DriverName = this.state.driverName;
         config.FileSettings.Directory = this.state.directory;
         config.FileSettings.AmazonS3AccessKeyId = this.state.amazonS3AccessKeyId;
@@ -43,6 +33,18 @@ export default class StorageSettings extends AdminSettings {
         config.FileSettings.AmazonS3Region = this.state.amazonS3Region;
 
         return config;
+    }
+
+    getStateFromConfig(config) {
+        return {
+            maxFileSize: config.FileSettings.MaxFileSize / 1024 / 1024,
+            driverName: config.FileSettings.DriverName,
+            directory: config.FileSettings.Directory,
+            amazonS3AccessKeyId: config.FileSettings.AmazonS3AccessKeyId,
+            amazonS3SecretAccessKey: config.FileSettings.AmazonS3SecretAccessKey,
+            amazonS3Bucket: config.FileSettings.AmazonS3Bucket,
+            amazonS3Region: config.FileSettings.AmazonS3Region
+        };
     }
 
     renderTitle() {
@@ -57,25 +59,6 @@ export default class StorageSettings extends AdminSettings {
     }
 
     renderSettings() {
-        /*<TextSetting
-            id='maxFileSize'
-            label={
-                <FormattedMessage
-                    id='admin.image.maxFileSizeTitle'
-                    defaultMessage='Max File Size:'
-                />
-            }
-            placeholder={Utils.localizeMessage('admin.image.maxFileSizeExample', 'Ex "52428800"')}
-            helpText={
-                <FormattedMessage
-                    id='admin.image.maxFileSizeDescription'
-                    defaultMessage='Max File Size in bytes. If blank, will be set to 52428800 (50MB).'
-                />
-            }
-            value={this.state.maxFileSize}
-            onChange={this.handleChange}
-        />*/
-
         return (
             <SettingsGroup>
                 <DropdownSetting
@@ -87,7 +70,15 @@ export default class StorageSettings extends AdminSettings {
                     label={
                         <FormattedMessage
                             id='admin.image.storeTitle'
-                            defaultMessage='Store Files In:'
+                            defaultMessage='File Storage System:'
+                        />
+                    }
+                    helpText={
+                        <FormattedMessage
+                            id='admin.image.storeDescription'
+                            defaultMessage='Storage system where files and image attachments are saved.<br /><br />
+                            Selecting "Amazon S3" enables fields to enter your Amazon credentials and bucket details.<br /><br />
+                            Selecting "Local File System" enables the field to specify a local file directory.'
                         />
                     }
                     value={this.state.driverName}
@@ -98,14 +89,14 @@ export default class StorageSettings extends AdminSettings {
                     label={
                         <FormattedMessage
                             id='admin.image.localTitle'
-                            defaultMessage='Local Directory Location:'
+                            defaultMessage='Local Storage Directory:'
                         />
                     }
                     placeholder={Utils.localizeMessage('admin.image.localExample', 'Ex "./data/"')}
                     helpText={
                         <FormattedMessage
                             id='admin.image.localDescription'
-                            defaultMessage='Directory to which image files are written. If blank, will be set to ./data/.'
+                            defaultMessage='Directory to which files and images are written. If blank, defaults to ./data/.'
                         />
                     }
                     value={this.state.directory}
@@ -117,7 +108,7 @@ export default class StorageSettings extends AdminSettings {
                     label={
                         <FormattedMessage
                             id='admin.image.amazonS3IdTitle'
-                            defaultMessage='Amazon S3 Access Key Id:'
+                            defaultMessage='Amazon S3 Access Key ID:'
                         />
                     }
                     placeholder={Utils.localizeMessage('admin.image.amazonS3IdExample', 'Ex "AKIADTOVBGERKLCBV"')}
@@ -187,6 +178,24 @@ export default class StorageSettings extends AdminSettings {
                     value={this.state.amazonS3Region}
                     onChange={this.handleChange}
                     disabled={this.state.driverName !== DRIVER_S3}
+                />
+                <TextSetting
+                    id='maxFileSize'
+                    label={
+                        <FormattedMessage
+                            id='admin.image.maxFileSizeTitle'
+                            defaultMessage='Maximum File Size:'
+                        />
+                    }
+                    placeholder={Utils.localizeMessage('admin.image.maxFileSizeExample', '50')}
+                    helpText={
+                        <FormattedMessage
+                            id='admin.image.maxFileSizeDescription'
+                            defaultMessage='Maximum file size for message attachments in megabytes. Caution: Verify server memory can support your setting choice. Large file sizes increase the risk of server crashes and failed uploads due to network interruptions.'
+                        />
+                    }
+                    value={this.state.maxFileSize}
+                    onChange={this.handleChange}
                 />
             </SettingsGroup>
         );

@@ -317,21 +317,14 @@ export default class SignupUserComplete extends React.Component {
         }
 
         const providedPassword = ReactDOM.findDOMNode(this.refs.password).value;
-        if (!providedPassword || providedPassword.length < Constants.MIN_PASSWORD_LENGTH) {
+        const pwdError = Utils.isValidPassword(providedPassword);
+        if (pwdError != null) {
             this.setState({
                 nameError: '',
                 emailError: '',
-                passwordError: (
-                    <FormattedMessage
-                        id='signup_user_completed.passwordLength'
-                        values={{
-                            min: Constants.MIN_PASSWORD_LENGTH
-                        }}
-                    />
-                ),
+                passwordError: pwdError,
                 serverError: ''
             });
-            return;
         }
 
         this.setState({
@@ -393,7 +386,10 @@ export default class SignupUserComplete extends React.Component {
                 onSubmit={this.handleLdapSignup}
             >
                 <div className='signup__email-container'>
-                    <FormError error={this.state.ldapError}/>
+                    <FormError
+                        error={this.state.ldapError}
+                        margin={true}
+                    />
                     <div className={'form-group' + errorClass}>
                         <input
                             className='form-control'
@@ -586,6 +582,20 @@ export default class SignupUserComplete extends React.Component {
                     </span>
                 </a>
            );
+        }
+
+        if (global.window.mm_config.EnableSaml === 'true' && global.window.mm_license.IsLicensed === 'true' && global.window.mm_license.SAML === 'true') {
+            signupMessage.push(
+                <a
+                    className='btn btn-custom-login saml'
+                    key='saml'
+                    href={`/login/sso/saml${window.location.search}${window.location.search ? '&' : '?'}action=signup`}
+                >
+                    <span>
+                        {global.window.mm_config.SamlLoginButtonText}
+                    </span>
+                </a>
+            );
         }
 
         let ldapSignup;

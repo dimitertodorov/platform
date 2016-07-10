@@ -17,11 +17,6 @@ export default class ExternalServiceSettings extends AdminSettings {
         this.getConfigFromState = this.getConfigFromState.bind(this);
 
         this.renderSettings = this.renderSettings.bind(this);
-
-        this.state = Object.assign(this.state, {
-            segmentDeveloperKey: props.config.ServiceSettings.SegmentDeveloperKey,
-            googleDeveloperKey: props.config.ServiceSettings.GoogleDeveloperKey
-        });
     }
 
     getConfigFromState(config) {
@@ -29,6 +24,13 @@ export default class ExternalServiceSettings extends AdminSettings {
         config.ServiceSettings.GoogleDeveloperKey = this.state.googleDeveloperKey;
 
         return config;
+    }
+
+    getStateFromConfig(config) {
+        return {
+            segmentDeveloperKey: config.ServiceSettings.SegmentDeveloperKey,
+            googleDeveloperKey: config.ServiceSettings.GoogleDeveloperKey
+        };
     }
 
     renderTitle() {
@@ -50,7 +52,7 @@ export default class ExternalServiceSettings extends AdminSettings {
                     label={
                         <FormattedMessage
                             id='admin.service.segmentTitle'
-                            defaultMessage='Segment Developer Key:'
+                            defaultMessage='Segment Write Key:'
                         />
                     }
                     placeholder={Utils.localizeMessage('admin.service.segmentExample', 'Ex "g3fgGOXJAQ43QV7rAh6iwQCkV4cA1Gs"')}
@@ -68,7 +70,7 @@ export default class ExternalServiceSettings extends AdminSettings {
                     label={
                         <FormattedMessage
                             id='admin.service.googleTitle'
-                            defaultMessage='Google Developer Key:'
+                            defaultMessage='Google API Key:'
                         />
                     }
                     placeholder={Utils.localizeMessage('admin.service.googleExample', 'Ex "7rAh6iwQCkV4cA1Gsg3fgGOXJAQ43QV"')}

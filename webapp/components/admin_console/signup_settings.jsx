@@ -16,12 +16,6 @@ export default class SignupSettings extends AdminSettings {
         this.getConfigFromState = this.getConfigFromState.bind(this);
 
         this.renderSettings = this.renderSettings.bind(this);
-
-        this.state = Object.assign(this.state, {
-            requireEmailVerification: props.config.EmailSettings.RequireEmailVerification,
-            inviteSalt: props.config.EmailSettings.InviteSalt,
-            enableOpenServer: props.config.TeamSettings.EnableOpenServer
-        });
     }
 
     getConfigFromState(config) {
@@ -30,6 +24,14 @@ export default class SignupSettings extends AdminSettings {
         config.TeamSettings.EnableOpenServer = this.state.enableOpenServer;
 
         return config;
+    }
+
+    getStateFromConfig(config) {
+        return {
+            requireEmailVerification: config.EmailSettings.RequireEmailVerification,
+            inviteSalt: config.EmailSettings.InviteSalt,
+            enableOpenServer: config.TeamSettings.EnableOpenServer
+        };
     }
 
     renderTitle() {
@@ -75,7 +77,7 @@ export default class SignupSettings extends AdminSettings {
                     label={
                         <FormattedMessage
                             id='admin.email.inviteSaltTitle'
-                            defaultMessage='Invite Salt:'
+                            defaultMessage='Email Invite Salt:'
                         />
                     }
                     helpText={

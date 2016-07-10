@@ -10,12 +10,14 @@ import ConfigurationSettings from 'components/admin_console/configuration_settin
 import LocalizationSettings from 'components/admin_console/localization_settings.jsx';
 import UsersAndTeamsSettings from 'components/admin_console/users_and_teams_settings.jsx';
 import PrivacySettings from 'components/admin_console/privacy_settings.jsx';
+import PolicySettings from 'components/admin_console/policy_settings.jsx';
 import LogSettings from 'components/admin_console/log_settings.jsx';
 import EmailAuthenticationSettings from 'components/admin_console/email_authentication_settings.jsx';
 import GitLabSettings from 'components/admin_console/gitlab_settings.jsx';
 import LdapSettings from 'components/admin_console/ldap_settings.jsx';
+import SamlSettings from 'components/admin_console/saml_settings.jsx';
 import SignupSettings from 'components/admin_console/signup_settings.jsx';
-import LoginSettings from 'components/admin_console/login_settings.jsx';
+import PasswordSettings from 'components/admin_console/password_settings.jsx';
 import PublicLinkSettings from 'components/admin_console/public_link_settings.jsx';
 import SessionSettings from 'components/admin_console/session_settings.jsx';
 import ConnectionSettings from 'components/admin_console/connection_settings.jsx';
@@ -63,6 +65,10 @@ export default (
                 component={PrivacySettings}
             />
             <Route
+                path='policy'
+                component={PolicySettings}
+            />
+            <Route
                 path='compliance'
                 component={ComplianceSettings}
             />
@@ -85,6 +91,10 @@ export default (
                 path='ldap'
                 component={LdapSettings}
             />
+            <Route
+                path='saml'
+                component={SamlSettings}
+            />
         </Route>
         <Route path='security'>
             <IndexRedirect to='sign_up'/>
@@ -93,8 +103,8 @@ export default (
                 component={SignupSettings}
             />
             <Route
-                path='login'
-                component={LoginSettings}
+                path='password'
+                component={PasswordSettings}
             />
             <Route
                 path='public_links'

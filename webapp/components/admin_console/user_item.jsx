@@ -2,6 +2,7 @@
 // See License.txt for license information.
 
 import Client from 'utils/web_client.jsx';
+import Constants from 'utils/constants.jsx';
 import * as Utils from 'utils/utils.jsx';
 import UserStore from 'stores/user_store.jsx';
 import ConfirmModal from '../confirm_modal.jsx';
@@ -17,6 +18,7 @@ export default class UserItem extends React.Component {
         super(props);
 
         this.handleMakeMember = this.handleMakeMember.bind(this);
+        this.handleRemoveFromTeam = this.handleRemoveFromTeam.bind(this);
         this.handleMakeActive = this.handleMakeActive.bind(this);
         this.handleMakeNotActive = this.handleMakeNotActive.bind(this);
         this.handleMakeAdmin = this.handleMakeAdmin.bind(this);
@@ -53,6 +55,19 @@ export default class UserItem extends React.Component {
                 }
             );
         }
+    }
+
+    handleRemoveFromTeam() {
+        Client.removeUserFromTeam(
+                this.props.team.id,
+                this.props.user.id,
+                () => {
+                    this.props.refreshProfiles();
+                },
+                (err) => {
+                    this.setState({serverError: err.message});
+                }
+            );
     }
 
     handleMakeActive(e) {
@@ -221,6 +236,7 @@ export default class UserItem extends React.Component {
             );
         }
 
+        const me = UserStore.getCurrentUser();
         const email = user.email;
         let showMakeMember = teamMember.roles === 'admin' || user.roles === 'system_admin';
         let showMakeAdmin = teamMember.roles === '' && user.roles !== 'system_admin';
@@ -292,6 +308,24 @@ export default class UserItem extends React.Component {
                         <FormattedMessage
                             id='admin.user_item.makeMember'
                             defaultMessage='Make Member'
+                        />
+                    </a>
+                </li>
+            );
+        }
+
+        let removeFromTeam = null;
+        if (this.props.user.id !== me.id) {
+            removeFromTeam = (
+                <li role='presentation'>
+                    <a
+                        role='menuitem'
+                        href='#'
+                        onClick={this.handleRemoveFromTeam}
+                    >
+                        <FormattedMessage
+                            id='team_members_dropdown.leave_team'
+                            defaultMessage='Remove From Team'
                         />
                     </a>
                 </li>
@@ -374,12 +408,13 @@ export default class UserItem extends React.Component {
         let authServiceText;
         let passwordReset;
         if (user.auth_service) {
+            const service = (user.auth_service === Constants.LDAP_SERVICE || user.auth_service === Constants.SAML_SERVICE) ? user.auth_service.toUpperCase() : Utils.toTitleCase(user.auth_service);
             authServiceText = (
                 <FormattedHTMLMessage
                     id='admin.user_item.authServiceNotEmail'
                     defaultMessage=', <strong>Sign-in Method:</strong> {service}'
                     values={{
-                        service: Utils.toTitleCase(user.auth_service)
+                        service
                     }}
                 />
             );
@@ -426,7 +461,6 @@ export default class UserItem extends React.Component {
             passwordReset = null;
         }
 
-        const me = UserStore.getCurrentUser();
         let makeDemoteModal = null;
         if (this.props.user.id === me.id) {
             const title = (
@@ -509,6 +543,7 @@ export default class UserItem extends React.Component {
                             className='dropdown-menu member-menu'
                             role='menu'
                         >
+                            {removeFromTeam}
                             {makeAdmin}
                             {makeMember}
                             {makeActive}

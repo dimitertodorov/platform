@@ -4,6 +4,7 @@
 import FileAttachmentList from 'components/file_attachment_list.jsx';
 import UserStore from 'stores/user_store.jsx';
 import * as Utils from 'utils/utils.jsx';
+import * as GlobalActions from 'actions/global_actions.jsx';
 import Constants from 'utils/constants.jsx';
 import * as TextFormatting from 'utils/text_formatting.jsx';
 import PostBodyAdditionalContent from './post_body_additional_content.jsx';
@@ -16,6 +17,11 @@ import loadingGif from 'images/load.gif';
 import React from 'react';
 
 export default class PostBody extends React.Component {
+    constructor(props) {
+        super(props);
+
+        this.removePost = this.removePost.bind(this);
+    }
     shouldComponentUpdate(nextProps) {
         if (!Utils.areObjectsEqual(nextProps.post, this.props.post)) {
             return true;
@@ -37,7 +43,15 @@ export default class PostBody extends React.Component {
             return true;
         }
 
+        if (nextProps.emojis !== this.props.emojis) {
+            return true;
+        }
+
         return false;
+    }
+
+    removePost() {
+        GlobalActions.emitRemovePost(this.props.post);
     }
 
     render() {
@@ -140,18 +154,33 @@ export default class PostBody extends React.Component {
         }
 
         let message;
+        let removeButton;
         if (this.props.post.state === Constants.POST_DELETED) {
+            removeButton = (
+                <a
+                    href='#'
+                    className='post__remove theme'
+                    type='button'
+                    onClick={this.removePost}
+                >
+                    {'×'}
+                </a>
+            );
+
             message = (
-                <FormattedMessage
-                    id='post_body.deleted'
-                    defaultMessage='(message deleted)'
-                />
+                <p>
+                    <FormattedMessage
+                        id='post_body.deleted'
+                        defaultMessage='(message deleted)'
+                    />
+                    {removeButton}
+                </p>
             );
         } else {
             message = (
                 <span
                     onClick={TextFormatting.handleClick}
-                    dangerouslySetInnerHTML={{__html: TextFormatting.formatText(this.props.post.message)}}
+                    dangerouslySetInnerHTML={{__html: TextFormatting.formatText(this.props.post.message, {emojis: this.props.emojis})}}
                 />
             );
         }
@@ -199,5 +228,6 @@ PostBody.propTypes = {
     retryPost: React.PropTypes.func.isRequired,
     handleCommentClick: React.PropTypes.func.isRequired,
     compactDisplay: React.PropTypes.bool,
-    previewCollapsed: React.PropTypes.string
+    previewCollapsed: React.PropTypes.string,
+    emojis: React.PropTypes.object.isRequired
 };

@@ -8,11 +8,17 @@ import IntegrationStore from 'stores/integration_store.jsx';
 import TeamStore from 'stores/team_store.jsx';
 import * as Utils from 'utils/utils.jsx';
 
+import BackstageList from 'components/backstage/components/backstage_list.jsx';
 import {FormattedMessage} from 'react-intl';
 import InstalledCommand from './installed_command.jsx';
-import InstalledIntegrations from './installed_integrations.jsx';
 
 export default class InstalledCommands extends React.Component {
+    static get propTypes() {
+        return {
+            team: React.propTypes.object.isRequired
+        };
+    }
+
     constructor(props) {
         super(props);
 
@@ -71,7 +77,7 @@ export default class InstalledCommands extends React.Component {
         });
 
         return (
-            <InstalledIntegrations
+            <BackstageList
                 header={
                     <FormattedMessage
                         id='installed_commands.header'
@@ -84,17 +90,38 @@ export default class InstalledCommands extends React.Component {
                         defaultMessage='Add Slash Command'
                     />
                 }
-                addLink={'/' + Utils.getTeamNameFromUrl() + '/settings/integrations/commands/add'}
+                addLink={'/' + this.props.team.name + '/integrations/commands/add'}
                 emptyText={
                     <FormattedMessage
                         id='installed_commands.empty'
                         defaultMessage='No slash commands found'
                     />
                 }
+                helpText={
+                    <FormattedMessage
+                        id='installed_commands.help'
+                        defaultMessage='Create slash commands for use in external integrations. Please see {link} to learn more.'
+                        values={{
+                            link: (
+                                <a
+                                    target='_blank'
+                                    rel='noopener noreferrer'
+                                    href='http://docs.mattermost.com/developer/slash-commands.html'
+                                >
+                                    <FormattedMessage
+                                        id='installed_commands.helpLink'
+                                        defaultMessage='documentation'
+                                    />
+                                </a>
+                            )
+                        }}
+                    />
+                }
+                searchPlaceholder={Utils.localizeMessage('installed_commands.search', 'Search Slash Commands')}
                 loading={this.state.loading}
             >
                 {commands}
-            </InstalledIntegrations>
+            </BackstageList>
         );
     }
 }

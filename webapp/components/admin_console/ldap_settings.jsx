@@ -7,6 +7,8 @@ import ConnectionSecurityDropdownSetting from './connection_security_dropdown_se
 import SettingsGroup from './settings_group.jsx';
 import TextSetting from './text_setting.jsx';
 
+import SyncNowButton from './sync_now_button.jsx';
+
 import * as Utils from 'utils/utils.jsx';
 
 import React from 'react';
@@ -19,27 +21,6 @@ export default class LdapSettings extends AdminSettings {
         this.getConfigFromState = this.getConfigFromState.bind(this);
 
         this.renderSettings = this.renderSettings.bind(this);
-
-        this.state = Object.assign(this.state, {
-            enable: props.config.LdapSettings.Enable,
-            ldapServer: props.config.LdapSettings.LdapServer,
-            ldapPort: props.config.LdapSettings.LdapPort,
-            connectionSecurity: props.config.LdapSettings.ConnectionSecurity,
-            baseDN: props.config.LdapSettings.BaseDN,
-            bindUsername: props.config.LdapSettings.BindUsername,
-            bindPassword: props.config.LdapSettings.BindPassword,
-            userFilter: props.config.LdapSettings.UserFilter,
-            firstNameAttribute: props.config.LdapSettings.FirstNameAttribute,
-            lastNameAttribute: props.config.LdapSettings.LastNameAttribute,
-            nicknameAttribute: props.config.LdapSettings.NicknameAttribute,
-            emailAttribute: props.config.LdapSettings.EmailAttribute,
-            usernameAttribute: props.config.LdapSettings.UsernameAttribute,
-            idAttribute: props.config.LdapSettings.IdAttribute,
-            syncIntervalMinutes: props.config.LdapSettings.SyncIntervalMinutes,
-            skipCertificateVerification: props.config.LdapSettings.SkipCertificateVerification,
-            queryTimeout: props.config.LdapSettings.QueryTimeout,
-            loginFieldName: props.config.LdapSettings.LoginFieldName
-        });
     }
 
     getConfigFromState(config) {
@@ -60,9 +41,34 @@ export default class LdapSettings extends AdminSettings {
         config.LdapSettings.SyncIntervalMinutes = this.parseIntNonZero(this.state.syncIntervalMinutes);
         config.LdapSettings.SkipCertificateVerification = this.state.skipCertificateVerification;
         config.LdapSettings.QueryTimeout = this.parseIntNonZero(this.state.queryTimeout);
+        config.LdapSettings.MaxPageSize = this.parseInt(this.state.maxPageSize);
         config.LdapSettings.LoginFieldName = this.state.loginFieldName;
 
         return config;
+    }
+
+    getStateFromConfig(config) {
+        return {
+            enable: config.LdapSettings.Enable,
+            ldapServer: config.LdapSettings.LdapServer,
+            ldapPort: config.LdapSettings.LdapPort,
+            connectionSecurity: config.LdapSettings.ConnectionSecurity,
+            baseDN: config.LdapSettings.BaseDN,
+            bindUsername: config.LdapSettings.BindUsername,
+            bindPassword: config.LdapSettings.BindPassword,
+            userFilter: config.LdapSettings.UserFilter,
+            firstNameAttribute: config.LdapSettings.FirstNameAttribute,
+            lastNameAttribute: config.LdapSettings.LastNameAttribute,
+            nicknameAttribute: config.LdapSettings.NicknameAttribute,
+            emailAttribute: config.LdapSettings.EmailAttribute,
+            usernameAttribute: config.LdapSettings.UsernameAttribute,
+            idAttribute: config.LdapSettings.IdAttribute,
+            syncIntervalMinutes: config.LdapSettings.SyncIntervalMinutes,
+            skipCertificateVerification: config.LdapSettings.SkipCertificateVerification,
+            queryTimeout: config.LdapSettings.QueryTimeout,
+            maxPageSize: config.LdapSettings.MaxPageSize,
+            loginFieldName: config.LdapSettings.LoginFieldName
+        };
     }
 
     renderTitle() {
@@ -89,7 +95,7 @@ export default class LdapSettings extends AdminSettings {
                     label={
                         <FormattedMessage
                             id='admin.ldap.enableTitle'
-                            defaultMessage='Enable Login With LDAP:'
+                            defaultMessage='Enable sign-in with LDAP:'
                         />
                     }
                     helpText={
@@ -211,7 +217,7 @@ export default class LdapSettings extends AdminSettings {
                     helpText={
                         <FormattedMessage
                             id='admin.ldap.userFilterDisc'
-                            defaultMessage='Optionally enter an LDAP Filter to use when searching for user objects. Only the users selected by the query will be able to access Mattermost. For Active Directory, the query to filter out disabled users is (&(objectCategory=Person)(!(UserAccountControl:1.2.840.113556.1.4.803:=2))).'
+                            defaultMessage='(Optional) Enter an LDAP Filter to use when searching for user objects. Only the users selected by the query will be able to access Mattermost. For Active Directory, the query to filter out disabled users is (&(objectCategory=Person)(!(UserAccountControl:1.2.840.113556.1.4.803:=2))).'
                         />
                     }
                     value={this.state.userFilter}
@@ -318,14 +324,14 @@ export default class LdapSettings extends AdminSettings {
                     label={
                         <FormattedMessage
                             id='admin.ldap.idAttrTitle'
-                            defaultMessage='Id Attribute: '
+                            defaultMessage='ID Attribute: '
                         />
                     }
                     placeholder={Utils.localizeMessage('admin.ldap.idAttrEx', 'Ex "sAMAccountName"')}
                     helpText={
                         <FormattedMessage
                             id='admin.ldap.idAttrDesc'
-                            defaultMessage='The attribute in the LDAP server that will be used as a unique identifier in Mattermost. It should be an LDAP attribute with a value that does not change, such as username or uid. If a user’s Id Attribute changes, it will create a new Mattermost account unassociated with their old one. This is the value used to log in to Mattermost in the "LDAP Username" field on the sign in page. Normally this attribute is the same as the “Username Attribute” field above. If your team typically uses domain\\username to sign in to other services with LDAP, you may choose to put domain\\username in this field to maintain consistency between sites.'
+                            defaultMessage='The attribute in the LDAP server that will be used as a unique identifier in Mattermost. It should be an LDAP attribute with a value that does not change, such as username or uid. If a user’s ID Attribute changes, it will create a new Mattermost account unassociated with their old one. This is the value used to log in to Mattermost in the "LDAP Username" field on the sign in page. Normally this attribute is the same as the “Username Attribute” field above. If your team typically uses domain\\username to sign in to other services with LDAP, you may choose to put domain\\username in this field to maintain consistency between sites.'
                         />
                     }
                     value={this.state.idAttribute}
@@ -337,13 +343,13 @@ export default class LdapSettings extends AdminSettings {
                     label={
                         <FormattedMessage
                             id='admin.ldap.syncIntervalTitle'
-                            defaultMessage='Synchronization Interval (In Minutes)'
+                            defaultMessage='Synchronization Interval (minutes)'
                         />
                     }
                     helpText={
                         <FormattedMessage
                             id='admin.ldap.syncIntervalHelpText'
-                            defaultMessage='LDAP Synchronization is the process by which Mattermost updates its users to reflect any updated data on the LDAP server. For example if a name for a user is updated on the LDAP server, the change will be reflected in Mattermost when the synchronization is performed. Accounts that have been removed from the LDAP server will have their active sessions cleared and no longer be able to login to Mattermost. Mattermost will perform this synchronization regularly according to the interval supplied here. For example, if 60 is supplied, Mattermost will update the users every hour. Changing this will require a server restart before taking effect.'
+                            defaultMessage='LDAP Synchronization is the process by which Mattermost updates its users to reflect any updated data on the LDAP server. For example if a name for a user is updated on the LDAP server, the change will be reflected in Mattermost when the synchronization is performed. Accounts that have been removed from the LDAP server will have their active sessions cleared and no longer be able to login to Mattermost. Mattermost will perform this synchronization regularly according to the interval supplied here. For example, if 60 is supplied, Mattermost will update the users every hour.'
                         />
                     }
                     value={this.state.syncIntervalMinutes}
@@ -387,11 +393,30 @@ export default class LdapSettings extends AdminSettings {
                     disabled={!this.state.enable}
                 />
                 <TextSetting
+                    id='maxPageSize'
+                    label={
+                        <FormattedMessage
+                            id='admin.ldap.maxPageSizeTitle'
+                            defaultMessage='Maximum Page Size'
+                        />
+                    }
+                    placeholder={Utils.localizeMessage('admin.ldap.maxPageSizeEx', 'Ex "2000"')}
+                    helpText={
+                        <FormattedMessage
+                            id='admin.ldap.maxPageSizeHelpText'
+                            defaultMessage='The maximum number of users the Mattermost server will request from the LDAP server at one time. 0 is unlimited.'
+                        />
+                    }
+                    value={this.state.maxPageSize}
+                    onChange={this.handleChange}
+                    disabled={!this.state.enable}
+                />
+                <TextSetting
                     id='loginFieldName'
                     label={
                         <FormattedMessage
                             id='admin.ldap.loginNameTitle'
-                            defaultMessage='Login Field Name:'
+                            defaultMessage='Sign-in Field Default Text:'
                         />
                     }
                     placeholder={Utils.localizeMessage('admin.ldap.loginNameEx', 'Ex "LDAP Username"')}
@@ -403,6 +428,9 @@ export default class LdapSettings extends AdminSettings {
                     }
                     value={this.state.loginFieldName}
                     onChange={this.handleChange}
+                    disabled={!this.state.enable}
+                />
+                <SyncNowButton
                     disabled={!this.state.enable}
                 />
             </SettingsGroup>

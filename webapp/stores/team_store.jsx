@@ -139,6 +139,16 @@ class TeamStoreClass extends EventEmitter {
         this.team_members.push(member);
     }
 
+    removeTeamMember(teamId) {
+        for (var index in this.team_members) {
+            if (this.team_members.hasOwnProperty(index)) {
+                if (this.team_members[index].team_id === teamId) {
+                    Reflect.deleteProperty(this.team_members, index);
+                }
+            }
+        }
+    }
+
     getTeamMembers() {
         return this.team_members;
     }
@@ -160,13 +170,16 @@ class TeamStoreClass extends EventEmitter {
     }
 
     isTeamAdminForCurrentTeam() {
+        return this.isTeamAdmin(UserStore.getCurrentId(), this.getCurrentId());
+    }
+
+    isTeamAdmin(userId, teamId) {
         if (!Utils) {
             Utils = require('utils/utils.jsx'); //eslint-disable-line global-require
         }
 
-        const userId = UserStore.getCurrentId();
         var teamMembers = this.getTeamMembers();
-        const teamMember = teamMembers.find((m) => m.user_id === userId && m.team_id === this.getCurrentId());
+        const teamMember = teamMembers.find((m) => m.user_id === userId && m.team_id === teamId);
 
         if (teamMember) {
             return Utils.isAdmin(teamMember.roles);
@@ -211,4 +224,5 @@ TeamStore.dispatchToken = AppDispatcher.register((payload) => {
     }
 });
 
+window.TeamStore = TeamStore;
 export default TeamStore;

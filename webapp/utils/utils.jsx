@@ -14,9 +14,12 @@ import * as AsyncClient from './async_client.jsx';
 import Client from './web_client.jsx';
 
 import {browserHistory} from 'react-router/es6';
+import {FormattedMessage} from 'react-intl';
 
 import icon50 from 'images/icon50x50.png';
 import bing from 'images/bing.mp3';
+
+import React from 'react';
 
 export function isEmail(email) {
     // writing a regex to match all valid email addresses is really, really hard (see http://stackoverflow.com/a/201378)
@@ -30,6 +33,14 @@ export function cleanUpUrlable(input) {
     cleaned = cleaned.replace(/^\-+/, '');
     cleaned = cleaned.replace(/\-+$/, '');
     return cleaned;
+}
+
+export function isMac() {
+    return navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+}
+
+export function cmdOrCtrlPressed(e) {
+    return (isMac() && e.metaKey) || (!isMac() && e.ctrlKey);
 }
 
 export function isChrome() {
@@ -587,6 +598,7 @@ export function applyTheme(theme) {
     }
 
     if (theme.centerChannelBg) {
+        changeCss('@media(min-width: 768px){.app__body .post:hover .post__header .col__reply', 'background:' + theme.centerChannelBg, 1);
         changeCss('.app__body .app__content, .app__body .markdown__table, .app__body .markdown__table tbody tr, .app__body .suggestion-list__content, .app__body .modal .modal-content, .app__body .post.post--compact .post-image__column', 'background:' + theme.centerChannelBg, 1);
         changeCss('#post-list .post-list-holder-by-time', 'background:' + theme.centerChannelBg, 1);
         changeCss('#post-create', 'background:' + theme.centerChannelBg, 1);
@@ -598,6 +610,7 @@ export function applyTheme(theme) {
         changeCss('.app__body .popover.left>.arrow:after', 'border-left-color:' + theme.centerChannelBg, 1);
         changeCss('.app__body .popover.top>.arrow:after, .app__body .tip-overlay.tip-overlay--chat .arrow', 'border-top-color:' + theme.centerChannelBg, 1);
         changeCss('@media(min-width: 768px){.app__body .search-bar__container .search__form .search-bar, .app__body .form-control', 'background:' + theme.centerChannelBg, 1);
+        changeCss('@media(min-width: 768px){.app__body .sidebar--right.sidebar--right--expanded .sidebar-right-container', 'background:' + theme.centerChannelBg, 1);
         changeCss('.app__body .attachment__content', 'background:' + theme.centerChannelBg, 1);
         changeCss('body.app__body', 'scrollbar-face-color:' + theme.centerChannelBg, 2);
         changeCss('body.app__body', 'scrollbar-track-color:' + theme.centerChannelBg, 2);
@@ -606,8 +619,10 @@ export function applyTheme(theme) {
 
     if (theme.centerChannelColor) {
         changeCss('.app__body .post-list__arrows', 'fill:' + changeOpacity(theme.centerChannelColor, 0.3), 1);
+        changeCss('@media(min-width: 768px){.app__body .post:hover .post__header .col__reply', 'border-color:' + changeOpacity(theme.centerChannelColor, 0.2), 2);
         changeCss('.app__body .sidebar--left, .app__body .sidebar--right .sidebar--right__header, .app__body .suggestion-list__content .command', 'border-color:' + changeOpacity(theme.centerChannelColor, 0.2), 1);
-        changeCss('.app__body .input-group-addon, .app__body .app__content, .app__body .post-create__container .post-create-body .btn-file, .app__body .post-create__container .post-create-footer .msg-typing, .app__body .suggestion-list__content .command, .app__body .modal .modal-content, .app__body .dropdown-menu, .app__body .popover, .app__body .mentions__name, .app__body .tip-overlay', 'color:' + theme.centerChannelColor, 1);
+        changeCss('.app__body .post.post--system .post__body', 'color:' + changeOpacity(theme.centerChannelColor, 0.6), 1);
+        changeCss('.app__body .input-group-addon, .app__body .app__content, .app__body .post-create__container .post-create-body .btn-file, .app__body .post-create__container .post-create-footer .msg-typing, .app__body .suggestion-list__content .command, .app__body .modal .modal-content, .app__body .dropdown-menu, .app__body .popover, .app__body .mentions__name, .app__body .tip-overlay, .app__body .form-control[disabled], .app__body .form-control[readonly], .app__body fieldset[disabled] .form-control', 'color:' + theme.centerChannelColor, 1);
         changeCss('.app__body .post .post__link', 'color:' + changeOpacity(theme.centerChannelColor, 0.65), 1);
         changeCss('.app__body #archive-link-home, .video-div .video-thumbnail__error', 'background:' + changeOpacity(theme.centerChannelColor, 0.15), 1);
         changeCss('.app__body #post-create', 'color:' + theme.centerChannelColor, 2);
@@ -657,7 +672,7 @@ export function applyTheme(theme) {
         changeCss('.app__body .search-help-popover .search-autocomplete__item.selected', 'background:' + changeOpacity(theme.centerChannelColor, 0.15), 1);
         changeCss('::-webkit-scrollbar-thumb', 'background:' + changeOpacity(theme.centerChannelColor, 0.4), 1);
         changeCss('body', 'scrollbar-arrow-color:' + theme.centerChannelColor, 4);
-        changeCss('.app__body .modal .about-modal .about-modal__logo svg, .app__body .post .post__img svg', 'fill:' + theme.centerChannelColor, 1);
+        changeCss('.app__body .post-create__container .post-create-body .btn-file svg, .app__body .post.post--compact .post-image__column .post-image__details svg, .app__body .modal .about-modal .about-modal__logo svg, .app__body .post .post__img svg', 'fill:' + theme.centerChannelColor, 1);
         changeCss('.app__body .scrollbar--horizontal, .app__body .scrollbar--vertical', 'background:' + changeOpacity(theme.centerChannelColor, 0.5), 2);
         changeCss('.app__body .post-list__new-messages-below', 'background:' + changeColor(theme.centerChannelColor, 0.5), 2);
         changeCss('.app__body .post.post--comment .post__body', 'border-color:' + changeOpacity(theme.centerChannelColor, 0.2), 1);
@@ -981,7 +996,10 @@ export function getDisplayName(user) {
 }
 
 export function displayUsername(userId) {
-    const user = UserStore.getProfile(userId);
+    return displayUsernameForUser(UserStore.getProfile(userId));
+}
+
+export function displayUsernameForUser(user) {
     const nameFormat = PreferenceStore.get(Constants.Preferences.CATEGORY_DISPLAY_SETTINGS, 'name_format', 'false');
 
     let username = '';
@@ -1325,4 +1343,93 @@ export function localizeMessage(id, defaultMessage) {
 
 export function mod(a, b) {
     return ((a % b) + b) % b;
+}
+
+export function canCreateCustomEmoji(user) {
+    if (global.window.mm_license.IsLicensed !== 'true') {
+        return true;
+    }
+
+    if (isSystemAdmin(user.roles)) {
+        return true;
+    }
+
+    // already checked for system admin for both these cases
+    if (window.mm_config.RestrictCustomEmojiCreation === 'system_admin') {
+        return false;
+    } else if (window.mm_config.RestrictCustomEmojiCreation === 'admin') {
+        // check whether the user is an admin on any of their teams
+        for (const member of TeamStore.getTeamMembers()) {
+            if (isAdmin(member.roles)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    return true;
+}
+
+export function isValidPassword(password) {
+    let errorMsg = '';
+    let errorId = 'user.settings.security.passwordError';
+    let error = false;
+    let minimumLength = Constants.MIN_PASSWORD_LENGTH;
+
+    if (global.window.mm_config.BuildEnterpriseReady === 'true' && global.window.mm_license.IsLicensed === 'true' && global.window.mm_license.PasswordRequirements === 'true') {
+        if (password.length < parseInt(global.window.mm_config.PasswordMinimumLength, 10) || password.length > Constants.MAX_PASSWORD_LENGTH) {
+            error = true;
+        }
+
+        if (global.window.mm_config.PasswordRequireLowercase === 'true') {
+            if (!password.match(/[a-z]/)) {
+                error = true;
+            }
+
+            errorId = errorId + 'Lowercase';
+        }
+
+        if (global.window.mm_config.PasswordRequireUppercase === 'true') {
+            if (!password.match(/[0-9]/)) {
+                error = true;
+            }
+
+            errorId = errorId + 'Uppercase';
+        }
+
+        if (global.window.mm_config.PasswordRequireNumber === 'true') {
+            if (!password.match(/[A-Z]/)) {
+                error = true;
+            }
+
+            errorId = errorId + 'Number';
+        }
+
+        if (global.window.mm_config.PasswordRequireSymbol === 'true') {
+            if (!password.match(/[ !"\\#$%&'()*+,-./:;<=>?@[\]^_`|~]/)) {
+                error = true;
+            }
+
+            errorId = errorId + 'Symbol';
+        }
+
+        minimumLength = global.window.mm_config.PasswordMinimumLength;
+    } else if (password.length < Constants.MIN_PASSWORD_LENGTH) {
+        error = true;
+    }
+
+    if (error) {
+        errorMsg = (
+            <FormattedMessage
+                id={errorId}
+                default='Your password must be at least {min} characters.'
+                values={{
+                    min: minimumLength
+                }}
+            />
+        );
+    }
+
+    return errorMsg;
 }

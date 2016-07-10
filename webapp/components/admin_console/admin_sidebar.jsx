@@ -157,7 +157,7 @@ export default class AdminSidebar extends React.Component {
         return (
             <AdminSidebarCategory
                 parentLink='/admin_console'
-                icon='fa-gear'
+                icon='fa-user'
                 title={
                     <FormattedMessage
                         id='admin.sidebar.teams'
@@ -176,10 +176,12 @@ export default class AdminSidebar extends React.Component {
 
     render() {
         let ldapSettings = null;
+        let samlSettings = null;
         let complianceSettings = null;
 
         let license = null;
         let audits = null;
+        let policy = null;
 
         if (window.mm_config.BuildEnterpriseReady === 'true') {
             if (window.mm_license.IsLicensed === 'true') {
@@ -191,6 +193,20 @@ export default class AdminSidebar extends React.Component {
                                 <FormattedMessage
                                     id='admin.sidebar.ldap'
                                     defaultMessage='LDAP'
+                                />
+                            }
+                        />
+                    );
+                }
+
+                if (global.window.mm_license.SAML === 'true') {
+                    samlSettings = (
+                        <AdminSidebarSection
+                            name='saml'
+                            title={
+                                <FormattedMessage
+                                    id='admin.sidebar.saml'
+                                    defaultMessage='SAML'
                                 />
                             }
                         />
@@ -210,6 +226,18 @@ export default class AdminSidebar extends React.Component {
                         />
                     );
                 }
+
+                policy = (
+                    <AdminSidebarSection
+                        name='policy'
+                        title={
+                            <FormattedMessage
+                                id='admin.sidebar.policy'
+                                defaultMessage='Policy'
+                            />
+                        }
+                    />
+                );
             }
 
             license = (
@@ -262,11 +290,11 @@ export default class AdminSidebar extends React.Component {
                     <ul className='nav nav-pills nav-stacked'>
                         <AdminSidebarCategory
                             parentLink='/admin_console'
-                            icon='fa-gear'
+                            icon='fa-bar-chart'
                             title={
                                 <FormattedMessage
                                     id='admin.sidebar.reports'
-                                    defaultMessage='SITE REPORTS'
+                                    defaultMessage='REPORTING'
                                 />
                             }
                         >
@@ -275,7 +303,7 @@ export default class AdminSidebar extends React.Component {
                                 title={
                                     <FormattedMessage
                                         id='admin.sidebar.view_statistics'
-                                        defaultMessage='View Statistics'
+                                        defaultMessage='Site Statistics'
                                     />
                                 }
                             />
@@ -328,6 +356,7 @@ export default class AdminSidebar extends React.Component {
                                         />
                                     }
                                 />
+                                {policy}
                                 <AdminSidebarSection
                                     name='privacy'
                                     title={
@@ -377,6 +406,7 @@ export default class AdminSidebar extends React.Component {
                                     }
                                 />
                                 {ldapSettings}
+                                {samlSettings}
                             </AdminSidebarSection>
                             <AdminSidebarSection
                                 name='security'
@@ -398,11 +428,11 @@ export default class AdminSidebar extends React.Component {
                                     }
                                 />
                                 <AdminSidebarSection
-                                    name='login'
+                                    name='password'
                                     title={
                                         <FormattedMessage
-                                            id='admin.sidebar.login'
-                                            defaultMessage='Login'
+                                            id='admin.sidebar.password'
+                                            defaultMessage='Password'
                                         />
                                     }
                                 />
@@ -594,7 +624,7 @@ export default class AdminSidebar extends React.Component {
                         {this.renderTeams()}
                         <AdminSidebarCategory
                             parentLink='/admin_console'
-                            icon='fa-gear'
+                            icon='fa-wrench'
                             title={
                                 <FormattedMessage
                                     id='admin.sidebar.other'
