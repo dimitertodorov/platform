@@ -405,7 +405,7 @@ export function getComplianceReports() {
     );
 }
 
-export function getConfig() {
+export function getConfig(success, error) {
     if (isCallInProgress('getConfig')) {
         return;
     }
@@ -419,10 +419,17 @@ export function getConfig() {
                 type: ActionTypes.RECEIVED_CONFIG,
                 config: data
             });
+
+            if (success) {
+                success(data);
+            }
         },
         (err) => {
             callTracker.getConfig = 0;
-            dispatchError(err, 'getConfig');
+
+            if (!error) {
+                dispatchError(err, 'getConfig');
+            }
         }
     );
 }
@@ -1381,6 +1388,91 @@ export function getPublicLink(filename, success, error) {
             } else {
                 dispatchError(err, 'getPublicLink');
             }
+        }
+    );
+}
+
+export function listEmoji() {
+    if (isCallInProgress('listEmoji')) {
+        return;
+    }
+
+    callTracker.listEmoji = utils.getTimestamp();
+
+    Client.listEmoji(
+        (data) => {
+            callTracker.listEmoji = 0;
+
+            AppDispatcher.handleServerAction({
+                type: ActionTypes.RECEIVED_CUSTOM_EMOJIS,
+                emojis: data
+            });
+        },
+        (err) => {
+            callTracker.listEmoji = 0;
+            dispatchError(err, 'listEmoji');
+        }
+    );
+}
+
+export function addEmoji(emoji, image, success, error) {
+    const callName = 'addEmoji' + emoji.name;
+
+    if (isCallInProgress(callName)) {
+        return;
+    }
+
+    callTracker[callName] = utils.getTimestamp();
+
+    Client.addEmoji(
+        emoji,
+        image,
+        (data) => {
+            callTracker[callName] = 0;
+
+            AppDispatcher.handleServerAction({
+                type: ActionTypes.RECEIVED_CUSTOM_EMOJI,
+                emoji: data
+            });
+
+            if (success) {
+                success();
+            }
+        },
+        (err) => {
+            callTracker[callName] = 0;
+
+            if (error) {
+                error(err);
+            } else {
+                dispatchError(err, 'addEmoji');
+            }
+        }
+    );
+}
+
+export function deleteEmoji(id) {
+    const callName = 'deleteEmoji' + id;
+
+    if (isCallInProgress(callName)) {
+        return;
+    }
+
+    callTracker[callName] = utils.getTimestamp();
+
+    Client.deleteEmoji(
+        id,
+        () => {
+            callTracker[callName] = 0;
+
+            AppDispatcher.handleServerAction({
+                type: ActionTypes.REMOVED_CUSTOM_EMOJI,
+                id
+            });
+        },
+        (err) => {
+            callTracker[callName] = 0;
+            dispatchError(err, 'deleteEmoji');
         }
     );
 }

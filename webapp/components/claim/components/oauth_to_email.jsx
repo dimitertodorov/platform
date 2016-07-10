@@ -3,6 +3,7 @@
 
 import * as Utils from 'utils/utils.jsx';
 import Client from 'utils/web_client.jsx';
+import Constants from 'utils/constants.jsx';
 
 import React from 'react';
 import ReactDOM from 'react-dom';
@@ -17,6 +18,7 @@ export default class OAuthToEmail extends React.Component {
 
         this.state = {};
     }
+
     submit(e) {
         e.preventDefault();
         const state = {};
@@ -25,6 +27,14 @@ export default class OAuthToEmail extends React.Component {
         if (!password) {
             state.error = Utils.localizeMessage('claim.oauth_to_email.enterPwd', 'Please enter a password.');
             this.setState(state);
+            return;
+        }
+
+        const passwordErr = Utils.isValidPassword(password);
+        if (passwordErr !== '') {
+            this.setState({
+                error: passwordErr
+            });
             return;
         }
 
@@ -62,7 +72,7 @@ export default class OAuthToEmail extends React.Component {
             formClass += ' has-error';
         }
 
-        const uiType = Utils.toTitleCase(this.props.currentType) + ' SSO';
+        const uiType = `${(this.props.currentType === Constants.SAML_SERVICE ? Constants.SAML_SERVICE.toUpperCase() : Utils.toTitleCase(this.props.currentType))} SSO`;
 
         return (
             <div>
@@ -85,7 +95,7 @@ export default class OAuthToEmail extends React.Component {
                     <p>
                         <FormattedMessage
                             id='claim.oauth_to_email.enterNewPwd'
-                            defaultMessage='Enter a new password for your {site} account'
+                            defaultMessage='Enter a new password for your {site} email account'
                             values={{
                                 site: global.window.mm_config.SiteName
                             }}

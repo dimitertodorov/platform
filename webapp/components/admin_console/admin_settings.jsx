@@ -24,11 +24,11 @@ export default class AdminSettings extends React.Component {
         this.handleSubmit = this.handleSubmit.bind(this);
         this.onKeyDown = this.onKeyDown.bind(this);
 
-        this.state = {
+        this.state = Object.assign(this.getStateFromConfig(props.config), {
             saveNeeded: false,
             saving: false,
             serverError: null
-        };
+        });
     }
 
     handleChange(id, value) {
@@ -60,12 +60,17 @@ export default class AdminSettings extends React.Component {
             serverError: null
         });
 
-        const config = this.getConfigFromState(this.props.config);
+        // clone config so that we aren't modifying data in the stores
+        let config = JSON.parse(JSON.stringify(this.props.config));
+        config = this.getConfigFromState(config);
 
         Client.saveConfig(
             config,
             () => {
-                AsyncClient.getConfig();
+                AsyncClient.getConfig((savedConfig) => {
+                    this.setState(this.getStateFromConfig(savedConfig));
+                });
+
                 this.setState({
                     saveNeeded: false,
                     saving: false
@@ -115,8 +120,10 @@ export default class AdminSettings extends React.Component {
                 >
                     {this.renderSettings()}
                     <div className='form-group'>
+                        <FormError error={this.state.serverError}/>
+                    </div>
+                    <div className='form-group'>
                         <div className='col-sm-12'>
-                            <FormError error={this.state.serverError}/>
                             <SaveButton
                                 saving={this.state.saving}
                                 disabled={!this.state.saveNeeded || (this.canSave && !this.canSave())}

@@ -26,7 +26,7 @@ const holders = defineMessages({
     },
     passwordLengthError: {
         id: 'user.settings.security.passwordLengthError',
-        defaultMessage: 'New passwords must be at least {chars} characters'
+        defaultMessage: 'New passwords must be at least {min} characters and at most {max} characters.'
     },
     passwordMatchError: {
         id: 'user.settings.security.passwordMatchError',
@@ -90,8 +90,12 @@ class SecurityTab extends React.Component {
             return;
         }
 
-        if (newPassword.length < Constants.MIN_PASSWORD_LENGTH) {
-            this.setState({passwordError: formatMessage(holders.passwordLengthError, {chars: Constants.MIN_PASSWORD_LENGTH}), serverError: ''});
+        const passwordErr = Utils.isValidPassword(newPassword);
+        if (passwordErr !== '') {
+            this.setState({
+                passwordError: passwordErr,
+                serverError: ''
+            });
             return;
         }
 
@@ -551,7 +555,7 @@ class SecurityTab extends React.Component {
                 }
 
                 emailOption = (
-                    <div>
+                    <div className='padding-bottom x2'>
                         <Link
                             className='btn btn-primary'
                             to={link}
@@ -569,7 +573,7 @@ class SecurityTab extends React.Component {
             let gitlabOption;
             if (global.window.mm_config.EnableSignUpWithGitLab === 'true' && user.auth_service === '') {
                 gitlabOption = (
-                    <div>
+                    <div className='padding-bottom x2'>
                         <Link
                             className='btn btn-primary'
                             to={'/claim/email_to_oauth?email=' + encodeURIComponent(user.email) + '&old_type=' + user.auth_service + '&new_type=' + Constants.GITLAB_SERVICE}
@@ -587,7 +591,7 @@ class SecurityTab extends React.Component {
             let googleOption;
             if (global.window.mm_config.EnableSignUpWithGoogle === 'true' && user.auth_service === '') {
                 googleOption = (
-                    <div>
+                    <div className='padding-bottom x2'>
                         <Link
                             className='btn btn-primary'
                             to={'/' + teamName + '/claim/email_to_oauth?email=' + encodeURIComponent(user.email) + '&old_type=' + user.auth_service + '&new_type=' + Constants.GOOGLE_SERVICE}
@@ -605,7 +609,7 @@ class SecurityTab extends React.Component {
             let ldapOption;
             if (global.window.mm_config.EnableLdap === 'true' && user.auth_service === '') {
                 ldapOption = (
-                    <div>
+                    <div className='padding-bottom x2'>
                         <Link
                             className='btn btn-primary'
                             to={'/claim/email_to_ldap?email=' + encodeURIComponent(user.email)}
@@ -620,13 +624,31 @@ class SecurityTab extends React.Component {
                 );
             }
 
+            let samlOption;
+            if (global.window.mm_config.EnableSaml === 'true' && user.auth_service === '') {
+                samlOption = (
+                    <div className='padding-bottom x2'>
+                        <Link
+                            className='btn btn-primary'
+                            to={'/claim/email_to_oauth?email=' + encodeURIComponent(user.email) + '&old_type=' + user.auth_service + '&new_type=' + Constants.SAML_SERVICE}
+                        >
+                            <FormattedMessage
+                                id='user.settings.security.switchSaml'
+                                defaultMessage='Switch to using SAML SSO'
+                            />
+                        </Link>
+                        <br/>
+                    </div>
+                );
+            }
+
             const inputs = [];
             inputs.push(
                 <div key='userSignInOption'>
                     {emailOption}
                     {gitlabOption}
-                    <br/>
                     {ldapOption}
+                    {samlOption}
                     {googleOption}
                 </div>
             );
@@ -681,6 +703,13 @@ class SecurityTab extends React.Component {
                     defaultMessage='LDAP'
                 />
             );
+        } else if (this.props.user.auth_service === Constants.SAML_SERVICE) {
+            describe = (
+                <FormattedMessage
+                    id='user.settings.security.saml'
+                    defaultMessage='SAML'
+                />
+            );
         }
 
         return (
@@ -701,6 +730,7 @@ class SecurityTab extends React.Component {
         numMethods = global.window.mm_config.EnableSignUpWithGitLab === 'true' ? numMethods + 1 : numMethods;
         numMethods = global.window.mm_config.EnableSignUpWithGoogle === 'true' ? numMethods + 1 : numMethods;
         numMethods = global.window.mm_config.EnableLdap === 'true' ? numMethods + 1 : numMethods;
+        numMethods = global.window.mm_config.EnableSaml === 'true' ? numMethods + 1 : numMethods;
 
         let signInSection;
         if (global.window.mm_config.EnableSignUpWithEmail === 'true' && numMethods > 0) {

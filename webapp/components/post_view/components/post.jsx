@@ -84,6 +84,10 @@ export default class Post extends React.Component {
             return true;
         }
 
+        if (nextProps.emojis !== this.props.emojis) {
+            return true;
+        }
+
         return false;
     }
     render() {
@@ -100,6 +104,11 @@ export default class Post extends React.Component {
             type = 'Comment';
         }
 
+        let hideControls = '';
+        if (post.state === Constants.POST_DELETED || post.state === Constants.POST_FAILED) {
+            hideControls = 'post--hide-controls';
+        }
+
         const commentCount = this.props.commentCount;
 
         let rootUser;
@@ -107,13 +116,6 @@ export default class Post extends React.Component {
             rootUser = 'same--root';
         } else {
             rootUser = 'other--root';
-        }
-
-        let postType = '';
-        if (type !== 'Post') {
-            postType = 'post--comment';
-        } else if (commentCount > 0) {
-            postType = 'post--root';
         }
 
         let currentUserCss = '';
@@ -138,9 +140,22 @@ export default class Post extends React.Component {
             shouldHighlightClass = 'post--highlight';
         }
 
+        let postType = '';
+        if (type !== 'Post') {
+            postType = 'post--comment';
+        } else if (commentCount > 0) {
+            postType = 'post--root';
+            sameUserClass = '';
+            rootUser = '';
+        }
+
         let systemMessageClass = '';
         if (PostUtils.isSystemMessage(post)) {
             systemMessageClass = 'post--system';
+            sameUserClass = '';
+            currentUserCss = '';
+            postType = '';
+            rootUser = '';
         }
 
         let profilePic = (
@@ -166,18 +181,20 @@ export default class Post extends React.Component {
         }
 
         let compactClass = '';
+        let profilePicContainer = (<div className='post__img'>{profilePic}</div>);
         if (this.props.compactDisplay) {
             compactClass = 'post--compact';
+            profilePicContainer = '';
         }
 
         return (
             <div>
                 <div
                     id={'post_' + post.id}
-                    className={'post ' + sameUserClass + ' ' + compactClass + ' ' + rootUser + ' ' + postType + ' ' + currentUserCss + ' ' + shouldHighlightClass + ' ' + systemMessageClass}
+                    className={'post ' + sameUserClass + ' ' + compactClass + ' ' + rootUser + ' ' + postType + ' ' + currentUserCss + ' ' + shouldHighlightClass + ' ' + systemMessageClass + ' ' + hideControls}
                 >
                     <div className={'post__content ' + centerClass}>
-                        <div className='post__img'>{profilePic}</div>
+                        {profilePicContainer}
                         <div>
                             <PostHeader
                                 ref='header'
@@ -200,6 +217,7 @@ export default class Post extends React.Component {
                                 handleCommentClick={this.handleCommentClick}
                                 compactDisplay={this.props.compactDisplay}
                                 previewCollapsed={this.props.previewCollapsed}
+                                emojis={this.props.emojis}
                             />
                         </div>
                     </div>
@@ -225,5 +243,6 @@ Post.propTypes = {
     compactDisplay: React.PropTypes.bool,
     previewCollapsed: React.PropTypes.string,
     commentCount: React.PropTypes.number,
-    useMilitaryTime: React.PropTypes.bool.isRequired
+    useMilitaryTime: React.PropTypes.bool.isRequired,
+    emojis: React.PropTypes.object.isRequired
 };

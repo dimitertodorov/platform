@@ -14,6 +14,7 @@ import Client from 'utils/web_client.jsx';
 import * as Utils from 'utils/utils.jsx';
 import * as AsyncClient from 'utils/async_client.jsx';
 import * as GlobalActions from 'actions/global_actions.jsx';
+import {handleNewPost} from 'actions/post_actions.jsx';
 
 import Constants from 'utils/constants.jsx';
 const SocketEvents = Constants.SocketEvents;
@@ -21,7 +22,8 @@ const SocketEvents = Constants.SocketEvents;
 import {browserHistory} from 'react-router/es6';
 
 const MAX_WEBSOCKET_FAILS = 7;
-const WEBSOCKET_RETRY_TIME = 3000;
+const MIN_WEBSOCKET_RETRY_TIME = 3000; // 3 sec
+const MAX_WEBSOCKET_RETRY_TIME = 300000; // 5 mins
 
 var conn = null;
 var connectFailCount = 0;
@@ -74,8 +76,16 @@ export function initialize() {
 
             connectFailCount = connectFailCount + 1;
 
+            var retryTime = MIN_WEBSOCKET_RETRY_TIME;
+
             if (connectFailCount > MAX_WEBSOCKET_FAILS) {
                 ErrorStore.storeLastError({message: Utils.localizeMessage('channel_loader.socketError', 'Please check connection, Mattermost unreachable. If issue persists, ask administrator to check WebSocket port.')});
+
+                // If we've failed a bunch of connections then start backing off
+                retryTime = MIN_WEBSOCKET_RETRY_TIME * connectFailCount * connectFailCount;
+                if (retryTime > MAX_WEBSOCKET_RETRY_TIME) {
+                    retryTime = MAX_WEBSOCKET_RETRY_TIME;
+                }
             }
 
             ErrorStore.setConnectionErrorCount(connectFailCount);
@@ -85,7 +95,7 @@ export function initialize() {
                 () => {
                     initialize();
                 },
-                WEBSOCKET_RETRY_TIME
+                retryTime
             );
         };
 
@@ -123,6 +133,10 @@ function handleMessage(msg) {
 
     case SocketEvents.NEW_USER:
         handleNewUserEvent();
+        break;
+
+    case SocketEvents.LEAVE_TEAM:
+        handleLeaveTeamEvent(msg);
         break;
 
     case SocketEvents.USER_ADDED:
@@ -181,7 +195,7 @@ export function close() {
 
 function handleNewPostEvent(msg) {
     const post = JSON.parse(msg.props.post);
-    GlobalActions.emitPostRecievedEvent(post, msg);
+    handleNewPost(post, msg);
 }
 
 function handlePostEditEvent(msg) {
@@ -207,6 +221,19 @@ function handleNewUserEvent() {
     AsyncClient.getProfiles();
     AsyncClient.getDirectProfiles();
     AsyncClient.getChannelExtraInfo();
+}
+
+function handleLeaveTeamEvent(msg) {
+    if (UserStore.getCurrentId() === msg.user_id) {
+        TeamStore.removeTeamMember(msg.team_id);
+
+        // if the are on the team begin removed redirect them to the root
+        if (TeamStore.getCurrentId() === msg.team_id) {
+            browserHistory.push('/');
+        }
+    } else if (TeamStore.getCurrentId() === msg.team_id) {
+        GlobalActions.emitProfilesForDmList();
+    }
 }
 
 function handleDirectAddedEvent(msg) {

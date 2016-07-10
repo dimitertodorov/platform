@@ -15,15 +15,6 @@ export default class WebhookSettings extends AdminSettings {
         this.getConfigFromState = this.getConfigFromState.bind(this);
 
         this.renderSettings = this.renderSettings.bind(this);
-
-        this.state = Object.assign(this.state, {
-            enableIncomingWebhooks: props.config.ServiceSettings.EnableIncomingWebhooks,
-            enableOutgoingWebhooks: props.config.ServiceSettings.EnableOutgoingWebhooks,
-            enableCommands: props.config.ServiceSettings.EnableCommands,
-            enableOnlyAdminIntegrations: props.config.ServiceSettings.EnableOnlyAdminIntegrations,
-            enablePostUsernameOverride: props.config.ServiceSettings.EnablePostUsernameOverride,
-            enablePostIconOverride: props.config.ServiceSettings.EnablePostIconOverride
-        });
     }
 
     getConfigFromState(config) {
@@ -35,6 +26,17 @@ export default class WebhookSettings extends AdminSettings {
         config.ServiceSettings.EnablePostIconOverride = this.state.enablePostIconOverride;
 
         return config;
+    }
+
+    getStateFromConfig(config) {
+        return {
+            enableIncomingWebhooks: config.ServiceSettings.EnableIncomingWebhooks,
+            enableOutgoingWebhooks: config.ServiceSettings.EnableOutgoingWebhooks,
+            enableCommands: config.ServiceSettings.EnableCommands,
+            enableOnlyAdminIntegrations: config.ServiceSettings.EnableOnlyAdminIntegrations,
+            enablePostUsernameOverride: config.ServiceSettings.EnablePostUsernameOverride,
+            enablePostIconOverride: config.ServiceSettings.EnablePostIconOverride
+        };
     }
 
     renderTitle() {
@@ -90,7 +92,7 @@ export default class WebhookSettings extends AdminSettings {
                     label={
                         <FormattedMessage
                             id='admin.service.cmdsTitle'
-                            defaultMessage='Enable Slash Commands: '
+                            defaultMessage='Enable Custom Slash Commands: '
                         />
                     }
                     helpText={
@@ -107,7 +109,7 @@ export default class WebhookSettings extends AdminSettings {
                     label={
                         <FormattedMessage
                             id='admin.service.integrationAdmin'
-                            defaultMessage='Enable Integrations for Admin Only: '
+                            defaultMessage='Restrict creating integrations to Team and System Admins: '
                         />
                     }
                     helpText={
@@ -124,7 +126,7 @@ export default class WebhookSettings extends AdminSettings {
                     label={
                         <FormattedMessage
                             id='admin.service.overrideTitle'
-                            defaultMessage='Enable Overriding Usernames from Webhooks and Slash Commands: '
+                            defaultMessage='Enable webhooks and slash commands to override usernames:'
                         />
                     }
                     helpText={
@@ -141,7 +143,7 @@ export default class WebhookSettings extends AdminSettings {
                     label={
                         <FormattedMessage
                             id='admin.service.iconTitle'
-                            defaultMessage='Enable Overriding Icon from Webhooks and Slash Commands: '
+                            defaultMessage='Enable webhooks and slash commands to override profile picture icons:'
                         />
                     }
                     helpText={

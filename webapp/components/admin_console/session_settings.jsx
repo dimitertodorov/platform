@@ -17,13 +17,6 @@ export default class SessionSettings extends AdminSettings {
         this.getConfigFromState = this.getConfigFromState.bind(this);
 
         this.renderSettings = this.renderSettings.bind(this);
-
-        this.state = Object.assign(this.state, {
-            sessionLengthWebInDays: props.config.ServiceSettings.SessionLengthWebInDays,
-            sessionLengthMobileInDays: props.config.ServiceSettings.SessionLengthMobileInDays,
-            sessionLengthSSOInDays: props.config.ServiceSettings.SessionLengthSSOInDays,
-            sessionCacheInMinutes: props.config.ServiceSettings.SessionCacheInMinutes
-        });
     }
 
     getConfigFromState(config) {
@@ -33,6 +26,15 @@ export default class SessionSettings extends AdminSettings {
         config.ServiceSettings.SessionCacheInMinutes = this.parseIntNonZero(this.state.sessionCacheInMinutes);
 
         return config;
+    }
+
+    getStateFromConfig(config) {
+        return {
+            sessionLengthWebInDays: config.ServiceSettings.SessionLengthWebInDays,
+            sessionLengthMobileInDays: config.ServiceSettings.SessionLengthMobileInDays,
+            sessionLengthSSOInDays: config.ServiceSettings.SessionLengthSSOInDays,
+            sessionCacheInMinutes: config.ServiceSettings.SessionCacheInMinutes
+        };
     }
 
     renderTitle() {
@@ -54,14 +56,14 @@ export default class SessionSettings extends AdminSettings {
                     label={
                         <FormattedMessage
                             id='admin.service.webSessionDays'
-                            defaultMessage='Session Length for Web in Days:'
+                            defaultMessage='Session length for email and LDAP authentication (days):'
                         />
                     }
                     placeholder={Utils.localizeMessage('admin.service.sessionDaysEx', 'Ex "30"')}
                     helpText={
                         <FormattedMessage
                             id='admin.service.webSessionDaysDesc'
-                            defaultMessage='The web session will expire after the number of days specified and will require a user to login again.'
+                            defaultMessage='Email or LDAP sessions will expire after the number of days specified and will require users to sign in again.'
                         />
                     }
                     value={this.state.sessionLengthWebInDays}
@@ -72,14 +74,14 @@ export default class SessionSettings extends AdminSettings {
                     label={
                         <FormattedMessage
                             id='admin.service.mobileSessionDays'
-                            defaultMessage='Session Length for Mobile Device in Days:'
+                            defaultMessage='Session length for mobile apps (days):'
                         />
                     }
                     placeholder={Utils.localizeMessage('admin.service.sessionDaysEx', 'Ex "30"')}
                     helpText={
                         <FormattedMessage
                             id='admin.service.mobileSessionDaysDesc'
-                            defaultMessage='The native mobile session will expire after the number of days specified and will require a user to login again.'
+                            defaultMessage='Mobile sessions will expire after the number of days specified and will require users to sign in again.'
                         />
                     }
                     value={this.state.sessionLengthMobileInDays}
@@ -90,14 +92,14 @@ export default class SessionSettings extends AdminSettings {
                     label={
                         <FormattedMessage
                             id='admin.service.ssoSessionDays'
-                            defaultMessage='Session Length for SSO in Days:'
+                            defaultMessage='Session length for GitLab SSO authentication (days):'
                         />
                     }
                     placeholder={Utils.localizeMessage('admin.service.sessionDaysEx', 'Ex "30"')}
                     helpText={
                         <FormattedMessage
                             id='admin.service.ssoSessionDaysDesc'
-                            defaultMessage='The SSO session will expire after the number of days specified and will require a user to login again.'
+                            defaultMessage='GitLab single-sign-on sessions will expire after the number of days specified and will require users to sign in again.'
                         />
                     }
                     value={this.state.sessionLengthSSOInDays}
@@ -108,7 +110,7 @@ export default class SessionSettings extends AdminSettings {
                     label={
                         <FormattedMessage
                             id='admin.service.sessionCache'
-                            defaultMessage='Session Cache in Minutes:'
+                            defaultMessage='Session Cache (minutes):'
                         />
                     }
                     placeholder={Utils.localizeMessage('admin.service.sessionDaysEx', 'Ex "30"')}

@@ -5,6 +5,7 @@ package api
 
 import (
 	"bytes"
+	b64 "encoding/base64"
 	"fmt"
 	"hash/fnv"
 	"html/template"
@@ -71,6 +72,9 @@ func InitUser() {
 	BaseRoutes.NeedUser.Handle("/sessions", ApiUserRequired(getSessions)).Methods("GET")
 	BaseRoutes.NeedUser.Handle("/audits", ApiUserRequired(getAudits)).Methods("GET")
 	BaseRoutes.NeedUser.Handle("/image", ApiUserRequiredTrustRequester(getProfileImage)).Methods("GET")
+
+	BaseRoutes.Root.Handle("/login/sso/saml", AppHandlerIndependent(loginWithSaml)).Methods("GET")
+	BaseRoutes.Root.Handle("/login/sso/saml", AppHandlerIndependent(completeSaml)).Methods("POST")
 }
 
 func createUser(c *Context, w http.ResponseWriter, r *http.Request) {
@@ -240,6 +244,10 @@ func CreateUser(user *model.User) (*model.User, *model.AppError) {
 
 	user.MakeNonNil()
 	user.Locale = *utils.Cfg.LocalizationSettings.DefaultClientLocale
+
+	if err := utils.IsPasswordValid(user.Password); user.AuthService == "" && err != nil {
+		return nil, err
+	}
 
 	if result := <-Srv.Store.User().Save(user); result.Err != nil {
 		l4g.Error(utils.T("api.user.create_user.save.error"), result.Err)
@@ -890,7 +898,11 @@ func getInitialLoad(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	il.ClientCfg = utils.ClientCfg
-	il.LicenseCfg = utils.ClientLicense
+	if c.IsSystemAdmin() {
+		il.LicenseCfg = utils.ClientLicense
+	} else {
+		il.LicenseCfg = utils.GetSantizedClientLicense()
+	}
 
 	w.Write([]byte(il.ToJson()))
 }
@@ -1287,6 +1299,11 @@ func updateUser(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := utils.IsPasswordValid(user.Password); user.Password != "" && err != nil {
+		c.Err = err
+		return
+	}
+
 	if result := <-Srv.Store.User().Update(user, false); result.Err != nil {
 		c.Err = result.Err
 		return
@@ -1331,8 +1348,9 @@ func updatePassword(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	newPassword := props["new_password"]
-	if len(newPassword) < 5 {
-		c.SetInvalidParam("updatePassword", "new_password")
+
+	if err := utils.IsPasswordValid(newPassword); err != nil {
+		c.Err = err
 		return
 	}
 
@@ -1394,6 +1412,12 @@ func updateRoles(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	team_id := props["team_id"]
+
+	// Set context TeamId as the team_id in the request cause at this point c.TeamId is empty
+	if len(c.TeamId) == 0 {
+		c.TeamId = team_id
+	}
+
 	if !(len(user_id) == 26 || len(user_id) == 0) {
 		c.SetInvalidParam("updateRoles", "team_id")
 		return
@@ -1405,9 +1429,9 @@ func updateRoles(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// If you are not the system admin then you can only demote yourself
-	if !c.IsSystemAdmin() && user_id != c.Session.UserId {
-		c.Err = model.NewLocAppError("updateRoles", "api.user.update_roles.system_admin_needed.app_error", nil, "")
+	// If you are not the team admin then you can only demote yourself
+	if !c.IsTeamAdmin() && user_id != c.Session.UserId {
+		c.Err = model.NewLocAppError("updateRoles", "api.user.update_roles.team_admin_needed.app_error", nil, "")
 		c.Err.StatusCode = http.StatusForbidden
 		return
 	}
@@ -1425,6 +1449,13 @@ func updateRoles(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	} else {
 		user = result.Data.(*model.User)
+	}
+
+	// only another system admin can remove another system admin
+	if model.IsInRole(user.Roles, model.ROLE_SYSTEM_ADMIN) && !c.IsSystemAdmin() {
+		c.Err = model.NewLocAppError("updateRoles", "api.user.update_roles.system_admin_needed.app_error", nil, "")
+		c.Err.StatusCode = http.StatusForbidden
+		return
 	}
 
 	// if the team role has changed then lets update team members
@@ -1711,15 +1742,15 @@ func sendPasswordReset(c *Context, w http.ResponseWriter, r *http.Request) {
 func resetPassword(c *Context, w http.ResponseWriter, r *http.Request) {
 	props := model.MapFromJson(r.Body)
 
-	newPassword := props["new_password"]
-	if len(newPassword) < model.MIN_PASSWORD_LENGTH {
-		c.SetInvalidParam("resetPassword", "new_password")
-		return
-	}
-
 	code := props["code"]
 	if len(code) != model.PASSWORD_RECOVERY_CODE_SIZE {
 		c.SetInvalidParam("resetPassword", "code")
+		return
+	}
+
+	newPassword := props["new_password"]
+	if err := utils.IsPasswordValid(newPassword); err != nil {
+		c.Err = err
 		return
 	}
 
@@ -2001,12 +2032,16 @@ func emailToOAuth(c *Context, w http.ResponseWriter, r *http.Request) {
 	stateProps["email"] = email
 
 	m := map[string]string{}
-	if authUrl, err := GetAuthorizationCode(c, service, stateProps, ""); err != nil {
-		c.LogAuditWithUserId(user.Id, "fail - oauth issue")
-		c.Err = err
-		return
+	if service == model.USER_AUTH_SERVICE_SAML {
+		m["follow_link"] = c.GetSiteURL() + "/login/sso/saml?action=" + model.OAUTH_ACTION_EMAIL_TO_SSO + "&email=" + email
 	} else {
-		m["follow_link"] = authUrl
+		if authUrl, err := GetAuthorizationCode(c, service, stateProps, ""); err != nil {
+			c.LogAuditWithUserId(user.Id, "fail - oauth issue")
+			c.Err = err
+			return
+		} else {
+			m["follow_link"] = authUrl
+		}
 	}
 
 	c.LogAuditWithUserId(user.Id, "success")
@@ -2017,8 +2052,8 @@ func oauthToEmail(c *Context, w http.ResponseWriter, r *http.Request) {
 	props := model.MapFromJson(r.Body)
 
 	password := props["password"]
-	if len(password) == 0 {
-		c.SetInvalidParam("oauthToEmail", "password")
+	if err := utils.IsPasswordValid(password); err != nil {
+		c.Err = err
 		return
 	}
 
@@ -2149,8 +2184,8 @@ func ldapToEmail(c *Context, w http.ResponseWriter, r *http.Request) {
 	}
 
 	emailPassword := props["email_password"]
-	if len(emailPassword) == 0 {
-		c.SetInvalidParam("ldapToEmail", "email_password")
+	if err := utils.IsPasswordValid(emailPassword); err != nil {
+		c.Err = err
 		return
 	}
 
@@ -2263,12 +2298,10 @@ func resendVerification(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if result := <-Srv.Store.User().GetByEmail(email); result.Err != nil {
-		c.Err = result.Err
+	if user, error := getUserForLogin(email, false); error != nil {
+		c.Err = error
 		return
 	} else {
-		user := result.Data.(*model.User)
-
 		if user.LastActivityAt > 0 {
 			go SendEmailChangeVerifyEmail(c, user.Id, user.Email, c.GetSiteURL())
 		} else {
@@ -2416,4 +2449,92 @@ func checkMfa(c *Context, w http.ResponseWriter, r *http.Request) {
 		rdata["mfa_required"] = strconv.FormatBool(result.Data.(*model.User).MfaActive)
 	}
 	w.Write([]byte(model.MapToJson(rdata)))
+}
+
+func loginWithSaml(c *Context, w http.ResponseWriter, r *http.Request) {
+	samlInterface := einterfaces.GetSamlInterface()
+
+	if samlInterface == nil {
+		c.Err = model.NewLocAppError("loginWithSaml", "api.user.saml.not_available.app_error", nil, "")
+		c.Err.StatusCode = http.StatusFound
+		return
+	}
+
+	teamId, err := getTeamIdFromQuery(r.URL.Query())
+	if err != nil {
+		c.Err = err
+		return
+	}
+	action := r.URL.Query().Get("action")
+	relayState := ""
+
+	if len(action) != 0 {
+		relayProps := map[string]string{}
+		relayProps["team_id"] = teamId
+		relayProps["action"] = action
+		if action == model.OAUTH_ACTION_EMAIL_TO_SSO {
+			relayProps["email"] = r.URL.Query().Get("email")
+		}
+		relayState = b64.StdEncoding.EncodeToString([]byte(model.MapToJson(relayProps)))
+	}
+
+	if data, err := samlInterface.BuildRequest(relayState); err != nil {
+		c.Err = err
+		return
+	} else {
+		w.Header().Set("Content-Type", "application/x-www-form-urlencoded")
+		http.Redirect(w, r, data.URL, http.StatusFound)
+	}
+}
+
+func completeSaml(c *Context, w http.ResponseWriter, r *http.Request) {
+	samlInterface := einterfaces.GetSamlInterface()
+
+	if samlInterface == nil {
+		c.Err = model.NewLocAppError("completeSaml", "api.user.saml.not_available.app_error", nil, "")
+		c.Err.StatusCode = http.StatusFound
+		return
+	}
+
+	//Validate that the user is with SAML and all that
+	encodedXML := r.FormValue("SAMLResponse")
+	relayState := r.FormValue("RelayState")
+
+	relayProps := make(map[string]string)
+	if len(relayState) > 0 {
+		stateStr := ""
+		if b, err := b64.StdEncoding.DecodeString(relayState); err != nil {
+			c.Err = model.NewLocAppError("completeSaml", "api.user.authorize_oauth_user.invalid_state.app_error", nil, err.Error())
+			c.Err.StatusCode = http.StatusFound
+			return
+		} else {
+			stateStr = string(b)
+		}
+		relayProps = model.MapFromJson(strings.NewReader(stateStr))
+	}
+
+	if user, err := samlInterface.DoLogin(encodedXML, relayProps); err != nil {
+		c.Err = err
+		c.Err.StatusCode = http.StatusFound
+		return
+	} else {
+		if err := checkUserAdditionalAuthenticationCriteria(user, ""); err != nil {
+			c.Err = err
+			c.Err.StatusCode = http.StatusFound
+			return
+		}
+		action := relayProps["action"]
+		switch action {
+		case model.OAUTH_ACTION_SIGNUP:
+			teamId := relayProps["team_id"]
+			go addDirectChannels(teamId, user)
+			break
+		case model.OAUTH_ACTION_EMAIL_TO_SSO:
+			RevokeAllSession(c, user.Id)
+			go sendSignInChangeEmail(c, user.Email, c.GetSiteURL(), strings.Title(model.USER_AUTH_SERVICE_SAML)+" SSO")
+			break
+		}
+		doLogin(c, w, r, user, "")
+		http.Redirect(w, r, GetProtocol(r)+"://"+r.Host, http.StatusFound)
+	}
 }
