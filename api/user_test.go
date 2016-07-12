@@ -249,6 +249,42 @@ func TestLoginWithDeviceId(t *testing.T) {
 	}
 }
 
+func TestPasswordGuessLockout(t *testing.T) {
+	th := Setup().InitBasic()
+	Client := th.BasicClient
+	user := th.BasicUser
+	Client.Must(Client.Logout())
+
+	enableSignInWithEmail := *utils.Cfg.EmailSettings.EnableSignInWithEmail
+	passwordAttempts := utils.Cfg.ServiceSettings.MaximumLoginAttempts
+	defer func() {
+		*utils.Cfg.EmailSettings.EnableSignInWithEmail = enableSignInWithEmail
+		utils.Cfg.ServiceSettings.MaximumLoginAttempts = passwordAttempts
+	}()
+	*utils.Cfg.EmailSettings.EnableSignInWithEmail = true
+	utils.Cfg.ServiceSettings.MaximumLoginAttempts = 2
+
+	// OK to log in
+	if _, err := Client.Login(user.Username, user.Password); err != nil {
+		t.Fatal(err)
+	}
+
+	Client.Must(Client.Logout())
+
+	// Fail twice
+	if _, err := Client.Login(user.Email, "notthepassword"); err == nil {
+		t.Fatal("Shouldn't be able to login with bad password.")
+	}
+	if _, err := Client.Login(user.Email, "notthepassword"); err == nil {
+		t.Fatal("Shouldn't be able to login with bad password.")
+	}
+
+	// Locked out
+	if _, err := Client.Login(user.Email, user.Password); err == nil {
+		t.Fatal("Shouldn't be able to login with password when account is locked out.")
+	}
+}
+
 func TestSessions(t *testing.T) {
 	th := Setup().InitBasic()
 	Client := th.BasicClient
@@ -744,6 +780,26 @@ func TestUserUpdatePassword(t *testing.T) {
 
 	if _, err := Client.Login(user.Email, "newpwd1"); err != nil {
 		t.Fatal(err)
+	}
+
+	// Test lockout
+	passwordAttempts := utils.Cfg.ServiceSettings.MaximumLoginAttempts
+	defer func() {
+		utils.Cfg.ServiceSettings.MaximumLoginAttempts = passwordAttempts
+	}()
+	utils.Cfg.ServiceSettings.MaximumLoginAttempts = 2
+
+	// Fail twice
+	if _, err := Client.UpdateUserPassword(user.Id, "badpwd", "newpwd"); err == nil {
+		t.Fatal("Should have errored")
+	}
+	if _, err := Client.UpdateUserPassword(user.Id, "badpwd", "newpwd"); err == nil {
+		t.Fatal("Should have errored")
+	}
+
+	// Should fail because account is locked out
+	if _, err := Client.UpdateUserPassword(user.Id, "newpwd1", "newpwd2"); err == nil {
+		t.Fatal("Should have errored")
 	}
 
 	user2 := &model.User{Email: strings.ToLower(model.NewId()) + "success+test@simulator.amazonses.com", Nickname: "Corey Hulen", Password: "passwd1"}
@@ -1718,4 +1774,86 @@ func TestCheckMfa(t *testing.T) {
 	}
 
 	// need to add more test cases when enterprise bits can be loaded into tests
+}
+
+func TestUserTyping(t *testing.T) {
+	th := Setup().InitBasic()
+	Client := th.BasicClient
+	WebSocketClient, err := th.CreateWebSocketClient()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer WebSocketClient.Close()
+	WebSocketClient.Listen()
+
+	WebSocketClient.UserTyping("", "")
+	time.Sleep(300 * time.Millisecond)
+	if resp := <-WebSocketClient.ResponseChannel; resp.Error.Id != "api.websocket_handler.invalid_param.app_error" {
+		t.Fatal("should have been invalid param response")
+	}
+
+	th.LoginBasic2()
+	Client.Must(Client.JoinChannel(th.BasicChannel.Id))
+
+	WebSocketClient2, err2 := th.CreateWebSocketClient()
+	if err2 != nil {
+		t.Fatal(err2)
+	}
+	defer WebSocketClient2.Close()
+	WebSocketClient2.Listen()
+
+	WebSocketClient.UserTyping(th.BasicChannel.Id, "")
+
+	time.Sleep(300 * time.Millisecond)
+
+	stop := make(chan bool)
+	eventHit := false
+
+	go func() {
+		for {
+			select {
+			case resp := <-WebSocketClient2.EventChannel:
+				if resp.Event == model.WEBSOCKET_EVENT_TYPING && resp.UserId == th.BasicUser.Id {
+					eventHit = true
+				}
+			case <-stop:
+				return
+			}
+		}
+	}()
+
+	time.Sleep(300 * time.Millisecond)
+
+	stop <- true
+
+	if !eventHit {
+		t.Fatal("did not receive typing event")
+	}
+
+	WebSocketClient.UserTyping(th.BasicChannel.Id, "someparentid")
+
+	time.Sleep(300 * time.Millisecond)
+
+	eventHit = false
+
+	go func() {
+		for {
+			select {
+			case resp := <-WebSocketClient2.EventChannel:
+				if resp.Event == model.WEBSOCKET_EVENT_TYPING && resp.Data["parent_id"] == "someparentid" {
+					eventHit = true
+				}
+			case <-stop:
+				return
+			}
+		}
+	}()
+
+	time.Sleep(300 * time.Millisecond)
+
+	stop <- true
+
+	if !eventHit {
+		t.Fatal("did not receive typing event")
+	}
 }

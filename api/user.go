@@ -75,6 +75,8 @@ func InitUser() {
 
 	BaseRoutes.Root.Handle("/login/sso/saml", AppHandlerIndependent(loginWithSaml)).Methods("GET")
 	BaseRoutes.Root.Handle("/login/sso/saml", AppHandlerIndependent(completeSaml)).Methods("POST")
+
+	BaseRoutes.WebSocket.Handle("user_typing", ApiWebSocketHandler(userTyping))
 }
 
 func createUser(c *Context, w http.ResponseWriter, r *http.Request) {
@@ -269,7 +271,7 @@ func CreateUser(user *model.User) (*model.User, *model.AppError) {
 		ruser.Sanitize(map[string]bool{})
 
 		// This message goes to every channel, so the channelId is irrelevant
-		go Publish(model.NewMessage("", "", ruser.Id, model.ACTION_NEW_USER))
+		go Publish(model.NewWebSocketEvent("", "", ruser.Id, model.WEBSOCKET_EVENT_NEW_USER))
 
 		return ruser, nil
 	}
@@ -449,8 +451,8 @@ func login(c *Context, w http.ResponseWriter, r *http.Request) {
 
 		if result := <-Srv.Store.User().Get(id); result.Err != nil {
 			c.LogAuditWithUserId(user.Id, "failure")
-			c.Err = result.Err
-			c.Err.StatusCode = http.StatusBadRequest
+			//c.Err = model.NewLocAppError("login", "api.user.login.invalid_credentials", nil, result.Err.Error())
+			c.Err = model.NewLocAppError("login", "api.user.login.invalid_credentials", nil, "")
 			return
 		} else {
 			user = result.Data.(*model.User)
@@ -460,7 +462,8 @@ func login(c *Context, w http.ResponseWriter, r *http.Request) {
 
 		if user, err = getUserForLogin(loginId, ldapOnly); err != nil {
 			c.LogAudit("failure")
-			c.Err = err
+			//c.Err = model.NewLocAppError("login", "api.user.login.invalid_credentials", nil, err.Error())
+			c.Err = model.NewLocAppError("login", "api.user.login.invalid_credentials", nil, "")
 			return
 		}
 
@@ -470,7 +473,12 @@ func login(c *Context, w http.ResponseWriter, r *http.Request) {
 	// and then authenticate them
 	if user, err = authenticateUser(user, password, mfaToken); err != nil {
 		c.LogAuditWithUserId(user.Id, "failure")
-		c.Err = err
+		//c.Err = model.NewLocAppError("login", "api.user.login.invalid_credentials", nil, err.Error())
+		if err.Id == "api.user.login.not_verified.app_error" {
+			c.Err = err
+		} else {
+			c.Err = model.NewLocAppError("login", "api.user.login.invalid_credentials", nil, "")
+		}
 		return
 	}
 
@@ -1382,8 +1390,12 @@ func updatePassword(c *Context, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !model.ComparePassword(user.Password, currentPassword) {
-		c.Err = model.NewLocAppError("updatePassword", "api.user.update_password.incorrect.app_error", nil, "")
+	if err := doubleCheckPassword(user, currentPassword); err != nil {
+		if err.Id == "api.user.check_user_password.invalid.app_error" {
+			c.Err = model.NewLocAppError("updatePassword", "api.user.update_password.incorrect.app_error", nil, "")
+		} else {
+			c.Err = err
+		}
 		c.Err.StatusCode = http.StatusForbidden
 		return
 	}
@@ -2537,4 +2549,23 @@ func completeSaml(c *Context, w http.ResponseWriter, r *http.Request) {
 		doLogin(c, w, r, user, "")
 		http.Redirect(w, r, GetProtocol(r)+"://"+r.Host, http.StatusFound)
 	}
+}
+
+func userTyping(req *model.WebSocketRequest, responseData map[string]interface{}) *model.AppError {
+	var ok bool
+	var channelId string
+	if channelId, ok = req.Data["channel_id"].(string); !ok || len(channelId) != 26 {
+		return NewInvalidWebSocketParamError(req.Action, "channel_id")
+	}
+
+	var parentId string
+	if parentId, ok = req.Data["parent_id"].(string); !ok {
+		parentId = ""
+	}
+
+	event := model.NewWebSocketEvent("", channelId, req.Session.UserId, model.WEBSOCKET_EVENT_TYPING)
+	event.Add("parent_id", parentId)
+	go Publish(event)
+
+	return nil
 }

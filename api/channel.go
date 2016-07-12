@@ -158,7 +158,7 @@ func CreateDirectChannel(userId string, otherUserId string) (*model.Channel, *mo
 			return nil, result.Err
 		}
 	} else {
-		message := model.NewMessage("", channel.Id, userId, model.ACTION_DIRECT_ADDED)
+		message := model.NewWebSocketEvent("", channel.Id, userId, model.WEBSOCKET_EVENT_DIRECT_ADDED)
 		message.Add("teammate_id", otherUserId)
 		go Publish(message)
 
@@ -562,6 +562,11 @@ func AddUserToChannel(user *model.User, channel *model.Channel) (*model.ChannelM
 
 	if result := <-tmchan; result.Err != nil {
 		return nil, result.Err
+	} else {
+		teamMember := result.Data.(model.TeamMember)
+		if teamMember.DeleteAt > 0 {
+			return nil, model.NewLocAppError("AddUserToChannel", "api.channel.add_user.to.channel.failed.deleted.app_error", nil, "")
+		}
 	}
 
 	if result := <-cmchan; result.Err != nil {
@@ -582,7 +587,7 @@ func AddUserToChannel(user *model.User, channel *model.Channel) (*model.ChannelM
 	go func() {
 		InvalidateCacheForUser(user.Id)
 
-		message := model.NewMessage(channel.TeamId, channel.Id, user.Id, model.ACTION_USER_ADDED)
+		message := model.NewWebSocketEvent(channel.TeamId, channel.Id, user.Id, model.WEBSOCKET_EVENT_USER_ADDED)
 		go Publish(message)
 	}()
 
@@ -767,7 +772,7 @@ func deleteChannel(c *Context, w http.ResponseWriter, r *http.Request) {
 
 		go func() {
 			InvalidateCacheForChannel(channel.Id)
-			message := model.NewMessage(c.TeamId, channel.Id, c.Session.UserId, model.ACTION_CHANNEL_DELETED)
+			message := model.NewWebSocketEvent(c.TeamId, channel.Id, c.Session.UserId, model.WEBSOCKET_EVENT_CHANNEL_DELETED)
 			go Publish(message)
 
 			post := &model.Post{
@@ -801,7 +806,7 @@ func updateLastViewedAt(c *Context, w http.ResponseWriter, r *http.Request) {
 
 	Srv.Store.Preference().Save(&model.Preferences{preference})
 
-	message := model.NewMessage(c.TeamId, id, c.Session.UserId, model.ACTION_CHANNEL_VIEWED)
+	message := model.NewWebSocketEvent(c.TeamId, id, c.Session.UserId, model.WEBSOCKET_EVENT_CHANNEL_VIEWED)
 	message.Add("channel_id", id)
 
 	go Publish(message)
@@ -1027,7 +1032,7 @@ func RemoveUserFromChannel(userIdToRemove string, removerUserId string, channel 
 
 	InvalidateCacheForUser(userIdToRemove)
 
-	message := model.NewMessage(channel.TeamId, channel.Id, userIdToRemove, model.ACTION_USER_REMOVED)
+	message := model.NewWebSocketEvent(channel.TeamId, channel.Id, userIdToRemove, model.WEBSOCKET_EVENT_USER_REMOVED)
 	message.Add("remover_id", removerUserId)
 	go Publish(message)
 
